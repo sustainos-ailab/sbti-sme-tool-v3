@@ -1,0 +1,1714 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SBTi SME Readiness Assessment</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --purple: #7B2FBE;
+    --purple-dark: #5A1F8A;
+    --purple-light: #9B4FDE;
+    --lime: #C8F135;
+    --lime-dark: #A8D020;
+    --bg: #0E0B14;
+    --bg2: #160E23;
+    --bg3: #1E1530;
+    --surface: #261D3A;
+    --surface2: #2E2445;
+    --border: rgba(123,47,190,0.3);
+    --text: #F0ECF8;
+    --text-muted: #9D8EC0;
+    --text-dim: #6B5D8A;
+    --red: #FF4D6D;
+    --green: #4ECCA3;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Background mesh */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 60% 40% at 10% 20%, rgba(123,47,190,0.15) 0%, transparent 60%),
+      radial-gradient(ellipse 40% 50% at 90% 80%, rgba(200,241,53,0.06) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Header */
+  .header {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    padding: 16px 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(14,11,20,0.85);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .logo {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 16px;
+    letter-spacing: 0.05em;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .logo-dot {
+    width: 8px; height: 8px;
+    background: var(--lime);
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.7); }
+  }
+
+  .logo span { color: var(--text-muted); font-weight: 300; }
+
+  .btn-restart {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    padding: 7px 16px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-muted);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.03em;
+  }
+  .btn-restart:hover { border-color: var(--purple-light); color: var(--text); }
+
+  /* Main container */
+  .container {
+    position: relative;
+    z-index: 1;
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 100px 24px 80px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  /* Progress bar */
+  .progress-wrap {
+    margin-bottom: 40px;
+    animation: fadeIn 0.4s ease;
+  }
+
+  .progress-labels {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+
+  .phase-label {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    transition: color 0.3s;
+  }
+  .phase-label.active { color: var(--lime); }
+  .phase-label.done { color: var(--purple-light); }
+
+  .progress-bar {
+    height: 3px;
+    background: var(--surface2);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--purple), var(--lime));
+    border-radius: 2px;
+    transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Cards */
+  .card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 40px;
+    animation: slideUp 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  .phase-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--lime);
+    background: rgba(200,241,53,0.08);
+    border: 1px solid rgba(200,241,53,0.2);
+    padding: 4px 12px;
+    border-radius: 100px;
+    margin-bottom: 20px;
+  }
+
+  .question-num {
+    font-size: 11px;
+    color: var(--text-dim);
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .question-text {
+    font-family: 'Syne', sans-serif;
+    font-weight: 600;
+    font-size: 22px;
+    line-height: 1.35;
+    margin-bottom: 28px;
+    color: var(--text);
+  }
+
+  .sub-question {
+    font-size: 15px;
+    color: var(--text-muted);
+    margin-bottom: 20px;
+    line-height: 1.5;
+  }
+
+  /* Buttons */
+  .btn {
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 500;
+    font-size: 15px;
+    padding: 13px 28px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    letter-spacing: 0.01em;
+  }
+
+  .btn-primary {
+    background: var(--purple);
+    color: #fff;
+  }
+  .btn-primary:hover { background: var(--purple-light); transform: translateY(-1px); box-shadow: 0 8px 24px rgba(123,47,190,0.35); }
+
+  .btn-lime {
+    background: var(--lime);
+    color: #0E0B14;
+    font-weight: 600;
+  }
+  .btn-lime:hover { background: var(--lime-dark); transform: translateY(-1px); box-shadow: 0 8px 24px rgba(200,241,53,0.3); }
+
+  .btn-outline {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+  }
+  .btn-outline:hover { border-color: var(--purple-light); color: var(--text); }
+
+  .btn-danger {
+    background: rgba(255,77,109,0.1);
+    border: 1px solid rgba(255,77,109,0.3);
+    color: var(--red);
+  }
+
+  .btn-row {
+    display: flex;
+    gap: 12px;
+    margin-top: 28px;
+    flex-wrap: wrap;
+  }
+
+  /* Choice buttons */
+  .choices {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+
+  .choice-btn {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    font-weight: 400;
+    text-align: left;
+    padding: 14px 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+    width: 100%;
+  }
+  .choice-btn:hover {
+    background: var(--surface2);
+    border-color: var(--purple-light);
+    color: var(--text);
+    transform: translateX(3px);
+  }
+
+  /* Checkboxes */
+  .checkbox-group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 24px;
+  }
+
+  .checkbox-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 14px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .checkbox-item:hover { border-color: var(--purple-light); background: var(--surface2); }
+  .checkbox-item.checked { border-color: var(--purple); background: rgba(123,47,190,0.08); }
+
+  .checkbox-item input[type="checkbox"] { display: none; }
+
+  .checkbox-custom {
+    width: 20px; height: 20px;
+    flex-shrink: 0;
+    border: 2px solid var(--text-dim);
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    margin-top: 1px;
+  }
+  .checkbox-item.checked .checkbox-custom {
+    background: var(--purple);
+    border-color: var(--purple);
+  }
+  .checkbox-custom::after {
+    content: '✓';
+    color: #fff;
+    font-size: 12px;
+    display: none;
+  }
+  .checkbox-item.checked .checkbox-custom::after { display: block; }
+
+  .checkbox-label {
+    font-size: 14px;
+    color: var(--text-muted);
+    line-height: 1.4;
+  }
+  .checkbox-item.checked .checkbox-label { color: var(--text); }
+
+  /* Text inputs */
+  .input-field {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 16px;
+    padding: 13px 18px;
+    border-radius: 10px;
+    outline: none;
+    transition: all 0.2s;
+    margin-bottom: 14px;
+  }
+  .input-field:focus { border-color: var(--purple-light); box-shadow: 0 0 0 3px rgba(123,47,190,0.12); }
+
+  .input-label {
+    font-size: 13px;
+    color: var(--text-muted);
+    font-weight: 500;
+    margin-bottom: 6px;
+    display: block;
+  }
+
+  .input-group { margin-bottom: 4px; }
+
+  /* Error message */
+  .error-msg {
+    background: rgba(255,77,109,0.08);
+    border: 1px solid rgba(255,77,109,0.25);
+    color: var(--red);
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    line-height: 1.5;
+    margin-bottom: 16px;
+    display: none;
+  }
+  .error-msg.visible { display: block; }
+
+  /* Info note */
+  .info-note {
+    background: rgba(123,47,190,0.08);
+    border: 1px solid var(--border);
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-bottom: 20px;
+    line-height: 1.5;
+  }
+
+  /* Stop screen */
+  .stop-card {
+    background: rgba(255,77,109,0.05);
+    border: 1px solid rgba(255,77,109,0.25);
+    border-radius: 16px;
+    padding: 40px;
+    animation: slideUp 0.35s ease;
+  }
+
+  .stop-icon {
+    width: 56px; height: 56px;
+    background: rgba(255,77,109,0.1);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    margin-bottom: 20px;
+  }
+
+  .stop-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--red);
+    margin-bottom: 12px;
+  }
+
+  .stop-reason {
+    font-size: 15px;
+    color: var(--text-muted);
+    line-height: 1.6;
+    margin-bottom: 24px;
+  }
+
+  /* Calibration screen */
+  .calibration-card {
+    background: rgba(200,241,53,0.04);
+    border: 1px solid rgba(200,241,53,0.2);
+    border-radius: 16px;
+    padding: 40px;
+    animation: slideUp 0.35s ease;
+  }
+
+  .calibration-icon {
+    width: 56px; height: 56px;
+    background: rgba(200,241,53,0.1);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    margin-bottom: 20px;
+  }
+
+  .calibration-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--lime);
+    margin-bottom: 16px;
+  }
+
+  .summary-list {
+    list-style: none;
+    margin-bottom: 28px;
+  }
+  .summary-list li {
+    font-size: 14px;
+    color: var(--text-muted);
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    gap: 10px;
+    line-height: 1.4;
+  }
+  .summary-list li::before {
+    content: '›';
+    color: var(--lime);
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  /* Target option cards */
+  .option-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin-bottom: 24px;
+  }
+
+  .option-card {
+    background: var(--surface);
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    padding: 22px;
+    cursor: pointer;
+    transition: all 0.25s;
+    position: relative;
+    overflow: hidden;
+  }
+  .option-card:not(.disabled):hover { border-color: var(--purple); background: var(--surface2); }
+  .option-card.selected { border-color: var(--lime); background: rgba(200,241,53,0.05); }
+  .option-card.disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .option-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 8px;
+  }
+
+  .option-card-title {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 16px;
+    color: var(--text);
+  }
+
+  .option-badge {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 3px 10px;
+    border-radius: 100px;
+    background: var(--surface2);
+    color: var(--text-dim);
+  }
+  .option-card.selected .option-badge {
+    background: rgba(200,241,53,0.15);
+    color: var(--lime);
+  }
+
+  .option-card-desc {
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.5;
+    margin-bottom: 6px;
+  }
+
+  .disabled-reason {
+    font-size: 12px;
+    color: var(--red);
+    opacity: 0.7;
+    margin-top: 6px;
+    font-style: italic;
+  }
+
+  /* Roadmap */
+  .roadmap-steps {
+    list-style: none;
+    margin-bottom: 28px;
+  }
+
+  .roadmap-step {
+    display: flex;
+    gap: 16px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--border);
+    align-items: flex-start;
+  }
+
+  .step-num {
+    width: 28px; height: 28px;
+    background: var(--purple);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    flex-shrink: 0;
+    color: #fff;
+    font-family: 'Syne', sans-serif;
+  }
+
+  .step-content strong {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 2px;
+    color: var(--text);
+  }
+
+  .step-content span {
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.4;
+  }
+
+  /* Report / Extract */
+  .report-section {
+    margin-bottom: 28px;
+  }
+
+  .report-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--purple-light);
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .report-row {
+    display: flex;
+    gap: 12px;
+    padding: 8px 0;
+    font-size: 13px;
+    border-bottom: 1px solid rgba(123,47,190,0.1);
+  }
+
+  .report-key {
+    color: var(--text-dim);
+    width: 200px;
+    flex-shrink: 0;
+  }
+
+  .report-val { color: var(--text); }
+
+  .target-language-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--lime);
+    padding: 16px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    color: var(--text);
+    line-height: 1.7;
+    font-style: italic;
+    margin-top: 12px;
+  }
+
+  /* Discount badge */
+  .discount-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(200,241,53,0.1);
+    border: 1px solid rgba(200,241,53,0.3);
+    color: var(--lime);
+    font-size: 13px;
+    font-weight: 600;
+    padding: 6px 14px;
+    border-radius: 8px;
+    margin-top: 8px;
+  }
+
+  /* Help link */
+  .help-link {
+    color: var(--purple-light);
+    text-decoration: none;
+    font-weight: 500;
+    border-bottom: 1px solid rgba(155,79,222,0.4);
+    transition: color 0.2s;
+  }
+  .help-link:hover { color: var(--lime); border-color: var(--lime); }
+
+  /* Welcome screen */
+  .welcome-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 36px;
+    font-weight: 800;
+    line-height: 1.2;
+    margin-bottom: 16px;
+  }
+
+  .welcome-title span { color: var(--lime); }
+
+  .welcome-subtitle {
+    font-size: 16px;
+    color: var(--text-muted);
+    line-height: 1.6;
+    margin-bottom: 32px;
+  }
+
+  .feature-row {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 32px;
+    flex-wrap: wrap;
+  }
+
+  .feature-pill {
+    font-size: 12px;
+    font-weight: 500;
+    padding: 6px 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    color: var(--text-muted);
+  }
+
+  /* Responsive */
+  @media (max-width: 600px) {
+    .container { padding: 90px 16px 60px; }
+    .card { padding: 28px 22px; }
+    .calibration-card { padding: 28px 22px; }
+    .stop-card { padding: 28px 22px; }
+    .question-text { font-size: 18px; }
+    .header { padding: 14px 20px; }
+    .report-key { width: 140px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="logo">
+    <div class="logo-dot"></div>
+    SBTi SME <span>Assessment</span>
+  </div>
+  <button class="btn-restart" onclick="startOver()">↺ Start Over</button>
+</header>
+
+<div class="container">
+  <div id="app"></div>
+</div>
+
+<script>
+// ─── SUPABASE ────────────────────────────────────────────────────────────────
+const SUPABASE_URL = 'https://dajnizibuzsvyofiezlg.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_COSbc9gkD4GsYItdSvdhYw_40I-Rg4k';
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// ─── STATE ───────────────────────────────────────────────────────────────────
+const state = {
+  phase: 0,
+  step: 'welcome',
+  answers: {},
+  selectedOption: null,
+  companyName: '',
+  userName: '',
+  userEmail: ''
+};
+
+// ─── UTILS ───────────────────────────────────────────────────────────────────
+function parseNum(val) {
+  if (val === null || val === undefined || val === '') return NaN;
+  return parseFloat(String(val).replace(/[\s,]/g, ''));
+}
+
+function currentYear() { return new Date().getFullYear(); }
+
+function calcMinAmbition(baseYear, targetYear) {
+  if (baseYear <= 2020) return 4.2 * (targetYear - baseYear);
+  else return 4.2 * (targetYear - 2020);
+}
+
+function render(html) {
+  document.getElementById('app').innerHTML = html;
+}
+
+function showError(id, msg) {
+  const el = document.getElementById(id);
+  if (el) { el.textContent = msg; el.classList.add('visible'); }
+}
+
+function hideError(id) {
+  const el = document.getElementById(id);
+  if (el) el.classList.remove('visible');
+}
+
+function progressBar(phase, questionInPhase, totalInPhase) {
+  const phaseNames = ['Phase 1', 'Phase 2', 'Phase 3', 'Phase 4'];
+  const pct = Math.min(100, Math.round(((phase - 1) / 4 + questionInPhase / totalInPhase / 4) * 100));
+  return `
+    <div class="progress-wrap">
+      <div class="progress-labels">
+        ${phaseNames.map((p, i) => `<span class="phase-label ${i + 1 < phase ? 'done' : i + 1 === phase ? 'active' : ''}">${p}</span>`).join('')}
+      </div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+    </div>`;
+}
+
+// ─── SCREENS ─────────────────────────────────────────────────────────────────
+
+function showWelcome() {
+  state.step = 'welcome';
+  render(`
+    <div class="card">
+      <div class="welcome-title">Are you ready for<br><span>SBTi SME?</span></div>
+      <div class="welcome-subtitle">
+        This wizard checks your eligibility for the Science Based Targets initiative SME route,
+        calculates your target ambition, and generates a PDF submission extract — in under 5 minutes.
+      </div>
+      <div class="feature-row">
+        <span class="feature-pill">✓ 4-Phase Assessment</span>
+        <span class="feature-pill">✓ Instant Eligibility Check</span>
+        <span class="feature-pill">✓ Target Calculator</span>
+        <span class="feature-pill">✓ PDF Export</span>
+      </div>
+      <div class="input-group">
+        <label class="input-label">Your name</label>
+        <input id="userName" class="input-field" placeholder="e.g. Ana Müller">
+      </div>
+      <div class="input-group">
+        <label class="input-label">Your email address</label>
+        <input id="userEmail" class="input-field" placeholder="e.g. ana@acmetextiles.com">
+      </div>
+      <div class="input-group">
+        <label class="input-label">Your company name (optional, used for PDF)</label>
+        <input id="companyName" class="input-field" placeholder="e.g. Acme Textiles GmbH">
+      </div>
+      <div class="checkbox-item" id="consentCheck" onclick="toggleConsent()" style="margin-bottom:14px">
+        <div class="checkbox-custom"></div>
+        <span class="checkbox-label">I agree that my name and email will be stored securely and used only to send me follow-up resources and to subscribe me to the SustainOS newsletter.</span>
+      </div>
+      <div class="info-note">Your name and email will be stored securely and used only to send you follow-up resources and to subscribe you to the SustainOS newsletter. You can request deletion of your data at any time by emailing info@sustainos.io.</div>
+      <div id="welcomeErr" class="error-msg"></div>
+      <div class="btn-row">
+        <button class="btn btn-lime" onclick="startAssessment()">Start Assessment →</button>
+      </div>
+    </div>
+  `);
+}
+
+function toggleConsent() {
+  document.getElementById('consentCheck').classList.toggle('checked');
+}
+
+function startAssessment() {
+  const name = document.getElementById('userName').value.trim();
+  const email = document.getElementById('userEmail').value.trim();
+  const company = document.getElementById('companyName').value.trim();
+  const consent = document.getElementById('consentCheck').classList.contains('checked');
+  if (!name || !email || !company || !consent) {
+    showError('welcomeErr', 'Please enter your name, email address, and company name, and accept the data terms to continue.');
+    return;
+  }
+  hideError('welcomeErr');
+  state.userName = name;
+  state.userEmail = email;
+  state.companyName = company;
+  state.phase = 1;
+  showQ1();
+}
+
+// ─── PHASE 1 ─────────────────────────────────────────────────────────────────
+
+function showQ1() {
+  state.step = 'q1';
+  render(`
+    ${progressBar(1, 1, 4)}
+    <div class="card">
+      <div class="phase-badge">Phase 1 · Eligibility Check</div>
+      <div class="question-num">Question 1 of 4</div>
+      <div class="question-text">Does your company operate in the Oil & Gas sector, or are you classified as a Financial Institution (FI)?</div>
+      <div class="choices">
+        <button class="choice-btn" onclick="answerQ1('yes')">Yes — we are in Oil & Gas or are a Financial Institution</button>
+        <button class="choice-btn" onclick="answerQ1('no')">No — neither applies to us</button>
+      </div>
+    </div>
+  `);
+}
+
+function answerQ1(val) {
+  state.answers.q1 = val;
+  if (val === 'yes') {
+    showStop('FIs and Oil & Gas companies cannot use the SME route.');
+  } else {
+    showQ2();
+  }
+}
+
+function showQ2() {
+  state.step = 'q2';
+  render(`
+    ${progressBar(1, 2, 4)}
+    <div class="card">
+      <div class="phase-badge">Phase 1 · Eligibility Check</div>
+      <div class="question-num">Question 2 of 4</div>
+      <div class="question-text">Is your company a subsidiary of a parent company?</div>
+      <div class="choices">
+        <button class="choice-btn" onclick="answerQ2_sub('yes')">Yes — we are a subsidiary</button>
+        <button class="choice-btn" onclick="answerQ2_sub('no')">No — we are independent</button>
+      </div>
+    </div>
+  `);
+}
+
+function answerQ2_sub(val) {
+  state.answers.q2_subsidiary = val;
+  if (val === 'yes') {
+    render(`
+      ${progressBar(1, 2, 4)}
+      <div class="card">
+        <div class="phase-badge">Phase 1 · Eligibility Check</div>
+        <div class="question-num">Question 2b of 4</div>
+        <div class="question-text">Is your parent company also an SME or a Private Equity firm?</div>
+        <div class="choices">
+          <button class="choice-btn" onclick="answerQ2_parent('sme_pe')">Yes — parent is an SME or Private Equity</button>
+          <button class="choice-btn" onclick="answerQ2_parent('large')">No — parent is a large corporate</button>
+        </div>
+      </div>
+    `);
+  } else {
+    state.answers.q2_parent = 'n/a';
+    showQ3();
+  }
+}
+
+function answerQ2_parent(val) {
+  state.answers.q2_parent = val;
+  if (val === 'large') {
+    showStop('Subsidiary of a large corporate must use the standard route.');
+  } else {
+    showQ3();
+  }
+}
+
+function showQ3() {
+  state.step = 'q3';
+  render(`
+    ${progressBar(1, 3, 4)}
+    <div class="card">
+      <div class="phase-badge">Phase 1 · Eligibility Check</div>
+      <div class="question-num">Question 3 of 4</div>
+      <div class="question-text">Do your company's total Scope 1 and Scope 2 (Location-Based) emissions exceed 10,000 tCO₂e?</div>
+      <div class="choices">
+        <button class="choice-btn" onclick="answerQ3('yes')">Yes — exceeds 10,000 tCO₂e</button>
+        <button class="choice-btn" onclick="answerQ3('no')">No — below 10,000 tCO₂e</button>
+      </div>
+    </div>
+  `);
+}
+
+function answerQ3(val) {
+  state.answers.q3 = val;
+  if (val === 'yes') {
+    showStop('Scope 1+2 Location-Based emissions exceed 10,000 tCO₂e — must use standard route.');
+  } else {
+    showQ4();
+  }
+}
+
+function showQ4() {
+  state.step = 'q4';
+  render(`
+    ${progressBar(1, 4, 4)}
+    <div class="card">
+      <div class="phase-badge">Phase 1 · Eligibility Check</div>
+      <div class="question-num">Question 4 of 4</div>
+      <div class="question-text">Please confirm which of the following apply to your company (select all that apply):</div>
+      <div class="info-note">You must select at least 3 of the 4 criteria to qualify for the SME route.</div>
+      <div class="checkbox-group" id="q4checks">
+        ${['A. We have fewer than 250 employees.',
+           'B. Our turnover is less than €50 million.',
+           'C. Our total assets are less than €25 million.',
+           'D. We are not in a mandatory Forest, Land and Agriculture (FLAG) sector.']
+          .map((label, i) => `
+          <div class="checkbox-item" id="c4_${i}" onclick="toggleCheck4(${i})">
+            <div class="checkbox-custom"></div>
+            <span class="checkbox-label">${label}</span>
+          </div>`).join('')}
+      </div>
+      <div id="err4" class="error-msg"></div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="submitQ4()">Continue →</button>
+      </div>
+    </div>
+  `);
+  window._q4checked = new Set();
+}
+
+function toggleCheck4(i) {
+  if (!window._q4checked) window._q4checked = new Set();
+  const el = document.getElementById(`c4_${i}`);
+  if (window._q4checked.has(i)) {
+    window._q4checked.delete(i);
+    el.classList.remove('checked');
+  } else {
+    window._q4checked.add(i);
+    el.classList.add('checked');
+  }
+}
+
+function submitQ4() {
+  const checked = window._q4checked || new Set();
+  state.answers.q4 = Array.from(checked);
+  if (checked.size < 3) {
+    showError('err4', 'You must select at least 3 of 4 SME criteria. Fewer than 3 selected — must use standard route.');
+    return;
+  }
+  showCalibration1();
+}
+
+function showCalibration1() {
+  state.step = 'cal1';
+  const labels = ['<250 employees', '<€50M turnover', '<€25M total assets', 'Not in FLAG sector'];
+  const selected = state.answers.q4.map(i => labels[i]).join(', ');
+  render(`
+    <div class="calibration-card">
+      <div class="calibration-icon">✓</div>
+      <div class="calibration-title">Eligible for SME Route</div>
+      <ul class="summary-list">
+        <li>Not in Oil & Gas or FI sector</li>
+        <li>${state.answers.q2_subsidiary === 'yes' ? `Subsidiary of ${state.answers.q2_parent === 'sme_pe' ? 'SME/PE parent' : 'n/a'}` : 'Independent company'}</li>
+        <li>Scope 1+2 emissions below 10,000 tCO₂e threshold</li>
+        <li>${state.answers.q4.length} of 4 SME criteria met: ${selected}</li>
+      </ul>
+      <button class="btn btn-lime" onclick="showQ5()">Continue to Phase 2 →</button>
+    </div>
+  `);
+}
+
+// ─── PHASE 2 ─────────────────────────────────────────────────────────────────
+
+function showQ5() {
+  state.phase = 2;
+  state.step = 'q5';
+  render(`
+    ${progressBar(2, 1, 4)}
+    <div class="card">
+      <div class="phase-badge">Phase 2 · Inventory & Data</div>
+      <div class="question-num">Question 5</div>
+      <div class="question-text">Select your Base Year. This must be a complete past calendar or financial year.</div>
+      <div class="info-note">Base Year must be 2015 or later.</div>
+      <div class="input-group">
+        <label class="input-label">Base Year</label>
+        <input id="baseYear" class="input-field" type="number" placeholder="e.g. 2020" min="2015" max="${currentYear() - 1}">
+      </div>
+      <div id="err5" class="error-msg"></div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="submitQ5()">Continue →</button>
+      </div>
+    </div>
+  `);
+}
+
+function submitQ5() {
+  const val = parseInt(document.getElementById('baseYear').value);
+  if (isNaN(val) || val < 2015) {
+    showError('err5', 'Error: Base Year must be 2015 or later. Please enter a valid year.');
+    return;
+  }
+  if (val >= currentYear()) {
+    showError('err5', `Error: Base Year must be a complete past year (before ${currentYear()}).`);
+    return;
+  }
+  state.answers.baseYear = val;
+  showQ6();
+}
+
+function showQ6() {
+  state.step = 'q6';
+  render(`
+    ${progressBar(2, 2, 4)}
+    <div class="card">
+      <div class="phase-badge">Phase 2 · Inventory & Data</div>
+      <div class="question-num">Question 6</div>
+      <div class="question-text">Enter your emissions data for the Base Year <span style="color:var(--text-muted);font-size:16px;font-weight:400">(in tCO₂e)</span></div>
+      <div class="input-group">
+        <label class="input-label">Scope 1 — Direct emissions (tCO₂e)</label>
+        <input id="s1" class="input-field" type="text" placeholder="e.g. 450">
+      </div>
+      <div class="input-group">
+        <label class="input-label">Scope 2 — Location-Based / Grid average (tCO₂e)</label>
+        <input id="s2lb" class="input-field" type="text" placeholder="e.g. 1,200">
+      </div>
+      <div class="input-group">
+        <label class="input-label">Scope 2 — Market-Based / Contract specific (tCO₂e) <span style="color:var(--text-dim)">(Optional)</span></label>
+        <input id="s2mb" class="input-field" type="text" placeholder="e.g. 900">
+      </div>
+      <div id="err6" class="error-msg"></div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="submitQ6()">Continue →</button>
+      </div>
+    </div>
+  `);
+}
+
+function submitQ6() {
+  const s1 = parseNum(document.getElementById('s1').value);
+  const s2lb = parseNum(document.getElementById('s2lb').value);
+  const s2mb_raw = document.getElementById('s2mb').value.trim();
+  const s2mb = s2mb_raw === '' ? null : parseNum(s2mb_raw);
+
+  if (isNaN(s1) || isNaN(s2lb)) {
+    showError('err6', 'Please enter valid numbers for Scope 1 and Scope 2 Location-Based.');
+    return;
+  }
+  if (s1 + s2lb > 10000) {
+    showError('err6', 'Error: Scope 1 + Scope 2 (Location-Based) exceeds 10,000 tCO₂e. This contradicts your earlier answer in Q3. Please correct your data.');
+    return;
+  }
+  state.answers.s1 = s1;
+  state.answers.s2lb = s2lb;
+  state.answers.s2mb = s2mb;
+  showQ7();
+}
+
+function showQ7() {
+  state.step = 'q7';
+  render(`
+    ${progressBar(2, 3, 4)}
+    <div class="card">
+      <div class="phase-badge">Phase 2 · Inventory & Data</div>
+      <div class="question-num">Question 7</div>
+      <div class="question-text">Are you excluding any Scope 1 or 2 emissions from your inventory?</div>
+      <div class="choices">
+        <button class="choice-btn" onclick="answerQ7('yes')">Yes — some emissions are excluded</button>
+        <button class="choice-btn" onclick="answerQ7('no')">No — full inventory included</button>
+      </div>
+    </div>
+  `);
+}
+
+function answerQ7(val) {
+  state.answers.q7 = val;
+  if (val === 'yes') {
+    render(`
+      ${progressBar(2, 3, 4)}
+      <div class="card">
+        <div class="phase-badge">Phase 2 · Inventory & Data</div>
+        <div class="question-num">Question 7b</div>
+        <div class="question-text">Enter the combined Scope 1+2 exclusion percentage:</div>
+        <div class="info-note">Combined Scope 1+2 exclusions must not exceed 5%.</div>
+        <div class="input-group">
+          <label class="input-label">Exclusion percentage (%)</label>
+          <input id="excPct" class="input-field" type="number" step="0.1" placeholder="e.g. 3.5">
+        </div>
+        <div id="err7" class="error-msg"></div>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="submitQ7b()">Continue →</button>
+        </div>
+      </div>
+    `);
+  } else {
+    state.answers.exclusionPct = 0;
+    showQ8();
+  }
+}
+
+function submitQ7b() {
+  const pct = parseFloat(document.getElementById('excPct').value);
+  if (isNaN(pct) || pct < 0) {
+    showError('err7', 'Please enter a valid percentage.');
+    return;
+  }
+  if (pct > 5) {
+    showError('err7', 'Error: Combined Scope 1+2 exclusions must be ≤ 5%. Please correct the value.');
+    return;
+  }
+  state.answers.exclusionPct = pct;
+  showQ8();
+}
+
+function showQ8() {
+  state.step = 'q8';
+  render(`
+    ${progressBar(2, 4, 4)}
+    <div class="card">
+      <div class="phase-badge">Phase 2 · Inventory & Data</div>
+      <div class="question-num">Question 8</div>
+      <div class="question-text">Have you calculated your Scope 3 (Value Chain) emissions?</div>
+      <div class="info-note">A complete Scope 3 inventory covering ≥90% of emissions is required for the Net-Zero target path.</div>
+      <div class="choices">
+        <button class="choice-btn" onclick="answerQ8('complete')">Yes — complete Scope 3 inventory</button>
+        <button class="choice-btn" onclick="answerQ8('partial')">No, or partial inventory only</button>
+      </div>
+    </div>
+  `);
+}
+
+function answerQ8(val) {
+  state.answers.q8scope3 = val;
+  showCalibration2();
+}
+
+function showCalibration2() {
+  state.step = 'cal2';
+  const a = state.answers;
+  render(`
+    <div class="calibration-card">
+      <div class="calibration-icon">📊</div>
+      <div class="calibration-title">Phase 2 Complete</div>
+      <p style="color:var(--text-muted);margin-bottom:20px;font-size:14px">You are able to apply with the possible targets.</p>
+      <ul class="summary-list">
+        <li>Base Year: ${a.baseYear}</li>
+        <li>Scope 1: ${a.s1.toLocaleString()} tCO₂e</li>
+        <li>Scope 2 Location-Based: ${a.s2lb.toLocaleString()} tCO₂e</li>
+        <li>Scope 2 Market-Based: ${a.s2mb !== null ? a.s2mb.toLocaleString() + ' tCO₂e' : 'Not provided'}</li>
+        <li>Exclusions: ${a.exclusionPct > 0 ? a.exclusionPct + '%' : 'None'}</li>
+        <li>Scope 3 status: ${a.q8scope3 === 'complete' ? 'Complete inventory' : 'Not complete / partial'}</li>
+      </ul>
+      <button class="btn btn-lime" onclick="showPhase3()">Continue to Phase 3 →</button>
+    </div>
+  `);
+}
+
+// ─── PHASE 3 ─────────────────────────────────────────────────────────────────
+
+function showPhase3() {
+  state.phase = 3;
+  state.step = 'p3';
+  const a = state.answers;
+  const opt2avail = a.q8scope3 === 'complete';
+  const opt3avail = a.s1 === 0 || a.s2lb === 0;
+
+  render(`
+    ${progressBar(3, 1, 2)}
+    <div class="card">
+      <div class="phase-badge">Phase 3 · Target Selection</div>
+      <div class="question-text">Select your target path:</div>
+      <div class="option-cards">
+        <!-- Option 1 -->
+        <div class="option-card" id="opt1" onclick="selectOption(1)">
+          <div class="option-card-header">
+            <div class="option-card-title">Option 1 · Near-Term Targets</div>
+            <div class="option-badge">Standard Choice</div>
+          </div>
+          <div class="option-card-desc">Choose this if you want to set a standard reduction goal for the next 5–10 years. Scope 3 targets are not required, but you must commit to measure and reduce them.</div>
+        </div>
+        <!-- Option 2 -->
+        <div class="option-card ${!opt2avail ? 'disabled' : ''}" id="opt2" ${opt2avail ? 'onclick="selectOption(2)"' : ''}>
+          <div class="option-card-header">
+            <div class="option-card-title">Option 2 · Net-Zero Targets</div>
+            <div class="option-badge">Ambitious Choice</div>
+          </div>
+          <div class="option-card-desc">Choose this if you want to commit to long-term deep decarbonization (90% reduction) by 2050. Requires complete Scope 1, 2, and 3 data.</div>
+          ${!opt2avail ? '<div class="disabled-reason">Unavailable: Scope 3 inventory is not complete (Q8).</div>' : ''}
+        </div>
+        <!-- Option 3 -->
+        <div class="option-card ${!opt3avail ? 'disabled' : ''}" id="opt3" ${opt3avail ? 'onclick="selectOption(3)"' : ''}>
+          <div class="option-card-header">
+            <div class="option-card-title">Option 3 · Maintenance Targets</div>
+            <div class="option-badge">Specific Choice</div>
+          </div>
+          <div class="option-card-desc">Choose this only if you already have zero emissions in Scope 1 or Scope 2 and want to commit to maintaining that status.</div>
+          ${!opt3avail ? '<div class="disabled-reason">Unavailable: Scope 1 and Scope 2 are not zero.</div>' : ''}
+        </div>
+      </div>
+      <div id="errOpt" class="error-msg"></div>
+    </div>
+  `);
+  window._selectedOpt = null;
+}
+
+function selectOption(n) {
+  const a = state.answers;
+  const opt2avail = a.q8scope3 === 'complete';
+  const opt3avail = a.s1 === 0 || a.s2lb === 0;
+  if ((n === 2 && !opt2avail) || (n === 3 && !opt3avail)) return;
+
+  window._selectedOpt = n;
+  [1, 2, 3].forEach(i => {
+    const el = document.getElementById(`opt${i}`);
+    if (el) el.classList.toggle('selected', i === n);
+  });
+
+  // Show target year inputs
+  showTargetYearInputs(n);
+}
+
+function showTargetYearInputs(opt) {
+  const today = currentYear();
+  const minY = today + 5;
+  const maxY = today + 10;
+
+  let extra = '';
+  if (opt === 1 || opt === 3) {
+    extra = `
+      <div class="input-group" style="margin-top:20px">
+        <label class="input-label">Target Year (must be ${minY}–${maxY})</label>
+        <input id="targetYear" class="input-field" type="number" placeholder="e.g. ${minY}" min="${minY}" max="${maxY}">
+      </div>
+      <div id="errTY" class="error-msg"></div>
+      <div class="btn-row"><button class="btn btn-primary" onclick="submitTargetYear(${opt})">Continue →</button></div>
+    `;
+  } else if (opt === 2) {
+    extra = `
+      <div style="margin-top:20px">
+        <div class="input-group">
+          <label class="input-label">Near-Term Target Year (must be ${minY}–${maxY})</label>
+          <input id="targetYearNT" class="input-field" type="number" placeholder="e.g. ${minY}" min="${minY}" max="${maxY}">
+        </div>
+        <div class="input-group">
+          <label class="input-label">Long-Term Target Year (must be ≤ 2050)</label>
+          <input id="targetYearLT" class="input-field" type="number" placeholder="e.g. 2050" max="2050">
+        </div>
+      </div>
+      <div id="errTY" class="error-msg"></div>
+      <div class="btn-row"><button class="btn btn-primary" onclick="submitTargetYear(2)">Continue →</button></div>
+    `;
+  }
+
+  // Append to card
+  const card = document.querySelector('.card');
+  // remove existing year input if any
+  const existing = document.getElementById('yearInputs');
+  if (existing) existing.remove();
+
+  const div = document.createElement('div');
+  div.id = 'yearInputs';
+  div.innerHTML = extra;
+  card.appendChild(div);
+}
+
+function submitTargetYear(opt) {
+  const today = currentYear();
+  const minY = today + 5;
+  const maxY = today + 10;
+  const baseYear = state.answers.baseYear;
+
+  if (opt === 1 || opt === 3) {
+    const ty = parseInt(document.getElementById('targetYear').value);
+    if (isNaN(ty) || ty < minY || ty > maxY) {
+      showError('errTY', `Error: Target Year must be 5–10 years from today (${minY}–${maxY}).`);
+      return;
+    }
+    state.answers.targetYear = ty;
+    state.answers.ambition = calcMinAmbition(baseYear, ty);
+  } else if (opt === 2) {
+    const nt = parseInt(document.getElementById('targetYearNT').value);
+    const lt = parseInt(document.getElementById('targetYearLT').value);
+    if (isNaN(nt) || nt < minY || nt > maxY) {
+      showError('errTY', `Error: Near-Term Target Year must be 5–10 years from today (${minY}–${maxY}).`);
+      return;
+    }
+    if (isNaN(lt) || lt > 2050) {
+      showError('errTY', 'Error: Long-Term Target Year must be 2050 or earlier.');
+      return;
+    }
+    state.answers.targetYearNT = nt;
+    state.answers.targetYearLT = lt;
+    state.answers.ambition = calcMinAmbition(baseYear, nt);
+  }
+  state.selectedOption = opt;
+  showCalibration3(opt);
+}
+
+function showCalibration3(opt) {
+  state.step = 'cal3';
+  const a = state.answers;
+  let summary = '';
+  const optNames = { 1: 'Near-Term Targets (Standard)', 2: 'Net-Zero Targets (Ambitious)', 3: 'Maintenance Targets (Specific)' };
+  if (opt === 1) {
+    summary = `Target Year: ${a.targetYear} | Minimum ambition: ${a.ambition.toFixed(1)}% reduction from ${a.baseYear}`;
+  } else if (opt === 2) {
+    summary = `Near-Term Target Year: ${a.targetYearNT} (min ${a.ambition.toFixed(1)}% reduction) | Long-Term: Net-zero by ${a.targetYearLT}`;
+  } else if (opt === 3) {
+    summary = `Maintaining zero emissions through ${a.targetYear}`;
+  }
+
+  render(`
+    <div class="calibration-card">
+      <div class="calibration-icon">🎯</div>
+      <div class="calibration-title">Phase 3 Complete: Target Selected</div>
+      <ul class="summary-list">
+        <li>Selected path: ${optNames[opt]}</li>
+        <li>${summary}</li>
+      </ul>
+      <button class="btn btn-lime" onclick="showPhase4()">Continue to Phase 4 →</button>
+    </div>
+  `);
+}
+
+// ─── PHASE 4 ─────────────────────────────────────────────────────────────────
+
+function showPhase4() {
+  state.phase = 4;
+  state.step = 'p4a';
+  render(`
+    ${progressBar(4, 1, 2)}
+    <div class="card">
+      <div class="phase-badge">Phase 4 · Roadmap & PDF</div>
+      <div class="question-text">Final Details</div>
+
+      <div style="margin-bottom:20px">
+        <div class="question-num" style="margin-bottom:8px">Bioenergy</div>
+        <p class="sub-question">Do you have emissions from bioenergy? (These must be reported separately.)</p>
+        <div class="choices">
+          <button class="choice-btn" id="bio_yes" onclick="selectBio('yes', this)">Yes — we have bioenergy emissions</button>
+          <button class="choice-btn" id="bio_no" onclick="selectBio('no', this)">No — no bioenergy emissions</button>
+        </div>
+      </div>
+
+      <div>
+        <div class="question-num" style="margin-bottom:8px">Fee Discount Check</div>
+        <p class="sub-question">Is your annual revenue under $10 million USD AND are you headquartered in a developing country?</p>
+        <div class="choices">
+          <button class="choice-btn" id="disc_yes" onclick="selectDiscount('yes', this)">Yes — both conditions apply</button>
+          <button class="choice-btn" id="disc_no" onclick="selectDiscount('no', this)">No — one or both conditions do not apply</button>
+        </div>
+      </div>
+
+      <div id="errP4" class="error-msg"></div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="submitP4()">Generate Roadmap →</button>
+      </div>
+    </div>
+  `);
+  window._bioAns = null;
+  window._discAns = null;
+}
+
+function selectBio(val, btn) {
+  window._bioAns = val;
+  document.querySelectorAll('#bio_yes, #bio_no').forEach(b => b.style.borderColor = '');
+  btn.style.borderColor = 'var(--purple-light)';
+  btn.style.color = 'var(--text)';
+}
+
+function selectDiscount(val, btn) {
+  window._discAns = val;
+  document.querySelectorAll('#disc_yes, #disc_no').forEach(b => b.style.borderColor = '');
+  btn.style.borderColor = 'var(--purple-light)';
+  btn.style.color = 'var(--text)';
+}
+
+function submitP4() {
+  if (!window._bioAns || !window._discAns) {
+    showError('errP4', 'Please answer both questions above.');
+    return;
+  }
+  state.answers.bioenergy = window._bioAns;
+  state.answers.feeDiscount = window._discAns === 'yes';
+  showFinalReport();
+}
+
+// ─── FINAL REPORT ─────────────────────────────────────────────────────────────
+
+function getTargetLanguage() {
+  const a = state.answers;
+  const opt = state.selectedOption;
+  const company = state.companyName;
+  if (opt === 1) {
+    return `"${company} commits to reduce absolute scope 1 and scope 2 GHG emissions ${a.ambition.toFixed(1)}% by ${a.targetYear} from a ${a.baseYear} base year, and to measure and reduce its scope 3 emissions."`;
+  } else if (opt === 2) {
+    return `"${company} commits to reduce absolute scope 1 and scope 2 GHG emissions ${a.ambition.toFixed(1)}% by ${a.targetYearNT} from a ${a.baseYear} base year. ${company} also commits to reduce absolute scope 1, scope 2, and scope 3 GHG emissions by at least 90% by ${a.targetYearLT} from a ${a.baseYear} base year."`;
+  } else {
+    return `"${company} commits to maintain zero scope ${a.s1 === 0 ? '1' : '2'} emissions through ${a.answers ? a.answers.targetYear : a.targetYear}."`;
+  }
+}
+
+function getTargetLanguagePlain() {
+  const a = state.answers;
+  const opt = state.selectedOption;
+  const company = state.companyName;
+  if (opt === 1) {
+    return `${company} commits to reduce absolute scope 1 and scope 2 GHG emissions ${a.ambition.toFixed(1)}% by ${a.targetYear} from a ${a.baseYear} base year, and to measure and reduce its scope 3 emissions.`;
+  } else if (opt === 2) {
+    return `${company} commits to reduce absolute scope 1 and scope 2 GHG emissions ${a.ambition.toFixed(1)}% by ${a.targetYearNT} from a ${a.baseYear} base year. ${company} also commits to reduce absolute scope 1, scope 2, and scope 3 GHG emissions by at least 90% by ${a.targetYearLT} from a ${a.baseYear} base year.`;
+  } else {
+    return `${company} commits to maintain zero scope ${a.s1 === 0 ? '1' : '2'} emissions through ${a.targetYear}.`;
+  }
+}
+
+function showFinalReport() {
+  state.step = 'final';
+  const a = state.answers;
+  const opt = state.selectedOption;
+  const optNames = { 1: 'Option 1 — Near-Term Targets (Standard)', 2: 'Option 2 — Net-Zero Targets (Ambitious)', 3: 'Option 3 — Maintenance Targets (Specific)' };
+
+  const targetLang = getTargetLanguage();
+  const feeLabel = a.feeDiscount ? '<span class="discount-badge">✓ Eligible for 85% fee discount (~$187.50 instead of $1,250)</span>' : 'Standard fee (~$1,250)';
+
+  let targetDetails = '';
+  if (opt === 1) {
+    targetDetails = `Target Year: ${a.targetYear} | Minimum reduction: ${a.ambition.toFixed(1)}%`;
+  } else if (opt === 2) {
+    targetDetails = `Near-Term Target Year: ${a.targetYearNT} (min ${a.ambition.toFixed(1)}%) | Long-Term Net-Zero: ${a.targetYearLT}`;
+  } else {
+    targetDetails = `Maintaining zero emissions through ${a.targetYear}`;
+  }
+
+  render(`
+    ${progressBar(4, 2, 2)}
+    <div class="calibration-card" style="margin-bottom:24px">
+      <div class="calibration-icon">🚀</div>
+      <div class="calibration-title">Your SBTi Submission Roadmap</div>
+      <ol class="roadmap-steps">
+        <li class="roadmap-step"><div class="step-num">1</div><div class="step-content"><strong>Register</strong><span>Create your account on the SBTi Validation Portal.</span></div></li>
+        <li class="roadmap-step"><div class="step-num">2</div><div class="step-content"><strong>Upload</strong><span>Prepare proof of revenue/employees (e.g., annual report) to prove SME status.</span></div></li>
+        <li class="roadmap-step"><div class="step-num">3</div><div class="step-content"><strong>Submit</strong><span>Copy the data from this app into the "SME Science-Based Target Setting Form" on the portal.</span></div></li>
+        <li class="roadmap-step"><div class="step-num">4</div><div class="step-content"><strong>Pay</strong><span>Await invoice: ${a.feeDiscount ? '~$187.50 (85% discount applied)' : 'approx. $1,250'}.</span></div></li>
+        <li class="roadmap-step"><div class="step-num">5</div><div class="step-content"><strong>Review</strong><span>SBTi Due Diligence takes approximately 60 days.</span></div></li>
+        <li class="roadmap-step"><div class="step-num">6</div><div class="step-content"><strong>Report</strong><span>Once approved, publish GHG inventory and progress annually.</span></div></li>
+      </ol>
+    </div>
+
+    <div class="card" style="margin-bottom:24px">
+      <div class="report-section">
+        <div class="report-title">Eligibility Proof</div>
+        <div class="report-row"><div class="report-key">Sector check</div><div class="report-val">Not O&G or FI ✓</div></div>
+        <div class="report-row"><div class="report-key">Subsidiary</div><div class="report-val">${a.q2_subsidiary === 'yes' ? 'Yes — SME/PE parent ✓' : 'Independent company ✓'}</div></div>
+        <div class="report-row"><div class="report-key">Emission threshold</div><div class="report-val">&lt;10,000 tCO₂e ✓ (S1+S2LB = ${(a.s1 + a.s2lb).toLocaleString()} tCO₂e)</div></div>
+        <div class="report-row"><div class="report-key">SME criteria met</div><div class="report-val">${a.q4.length} of 4 ✓</div></div>
+      </div>
+
+      <div class="report-section">
+        <div class="report-title">Emissions Inventory</div>
+        <div class="report-row"><div class="report-key">Base Year</div><div class="report-val">${a.baseYear}</div></div>
+        <div class="report-row"><div class="report-key">Scope 1</div><div class="report-val">${a.s1.toLocaleString()} tCO₂e</div></div>
+        <div class="report-row"><div class="report-key">Scope 2 (Location-Based)</div><div class="report-val">${a.s2lb.toLocaleString()} tCO₂e</div></div>
+        <div class="report-row"><div class="report-key">Scope 2 (Market-Based)</div><div class="report-val">${a.s2mb !== null ? a.s2mb.toLocaleString() + ' tCO₂e' : 'Not provided'}</div></div>
+        <div class="report-row"><div class="report-key">Exclusions</div><div class="report-val">${a.exclusionPct > 0 ? a.exclusionPct + '%' : 'None'}</div></div>
+        <div class="report-row"><div class="report-key">Scope 3 status</div><div class="report-val">${a.q8scope3 === 'complete' ? 'Complete inventory' : 'Not complete / partial'}</div></div>
+        <div class="report-row"><div class="report-key">Bioenergy</div><div class="report-val">${a.bioenergy === 'yes' ? 'Yes — must report separately' : 'No bioenergy emissions'}</div></div>
+      </div>
+
+      <div class="report-section">
+        <div class="report-title">Selected Target</div>
+        <div class="report-row"><div class="report-key">Target path</div><div class="report-val">${optNames[opt]}</div></div>
+        <div class="report-row"><div class="report-key">Details</div><div class="report-val">${targetDetails}</div></div>
+        <div class="report-row"><div class="report-key">Submission fee</div><div class="report-val">${feeLabel}</div></div>
+      </div>
+
+      <div class="report-section">
+        <div class="report-title">Official Target Language</div>
+        <div class="target-language-box">${targetLang}</div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-lime" onclick="generatePDF()">⬇ Generate PDF</button>
+        <button class="btn btn-outline" onclick="startOver()">Start Over</button>
+      </div>
+    </div>
+  `);
+}
+
+// ─── PDF GENERATION ───────────────────────────────────────────────────────────
+
+async function generatePDF() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+  const a = state.answers;
+  const opt = state.selectedOption;
+  const W = doc.internal.pageSize.getWidth();
+  const margin = 50;
+  let y = margin;
+
+  function addPage() {
+    doc.addPage();
+    y = margin;
+  }
+
+  function checkY(needed = 30) {
+    if (y + needed > doc.internal.pageSize.getHeight() - margin) addPage();
+  }
+
+  // Header block
+  doc.setFillColor(123, 47, 190);
+  doc.rect(0, 0, W, 70, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(18);
+  doc.setFont('helvetica', 'bold');
+  doc.text('SBTi SME Readiness Assessment', margin, 30);
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`${state.companyName}  ·  Generated ${new Date().toLocaleDateString('en-GB')}`, margin, 50);
+
+  y = 90;
+  doc.setTextColor(14, 11, 20);
+
+  function sectionHeader(title) {
+    checkY(30);
+    doc.setFillColor(245, 240, 255);
+    doc.rect(margin - 8, y - 12, W - margin * 2 + 16, 22, 'F');
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(123, 47, 190);
+    doc.text(title.toUpperCase(), margin, y);
+    doc.setTextColor(14, 11, 20);
+    y += 18;
+  }
+
+  function row(key, val) {
+    checkY(20);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
+    doc.text(key + ':', margin, y);
+    doc.setFont('helvetica', 'normal');
+    const lines = doc.splitTextToSize(String(val), W - margin - 200);
+    doc.text(lines, 240, y);
+    y += lines.length * 13 + 4;
+  }
+
+  function para(text, size = 9) {
+    checkY(20);
+    doc.setFontSize(size);
+    doc.setFont('helvetica', 'normal');
+    const lines = doc.splitTextToSize(text, W - margin * 2);
+    lines.forEach(l => { checkY(14); doc.text(l, margin, y); y += 13; });
+    y += 5;
+  }
+
+  // Eligibility
+  sectionHeader('1. Eligibility Proof');
+  row('Sector', 'Not Oil & Gas or Financial Institution ✓');
+  row('Subsidiary', a.q2_subsidiary === 'yes' ? 'Yes — SME/PE parent ✓' : 'Independent company ✓');
+  row('Emission Threshold', `Below 10,000 tCO2e ✓ (S1+S2LB = ${(a.s1 + a.s2lb).toLocaleString()} tCO2e)`);
+  row('SME Criteria Met', `${a.q4.length} of 4 criteria satisfied`);
+  y += 10;
+
+  // Inventory
+  sectionHeader('2. GHG Inventory Sheet');
+  row('Base Year', a.baseYear);
+  row('Scope 1 (Direct)', a.s1.toLocaleString() + ' tCO2e');
+  row('Scope 2 Location-Based', a.s2lb.toLocaleString() + ' tCO2e');
+  row('Scope 2 Market-Based', a.s2mb !== null ? a.s2mb.toLocaleString() + ' tCO2e' : 'Not provided');
+  row('Exclusions', a.exclusionPct > 0 ? a.exclusionPct + '%' : 'None');
+  row('Scope 3 Status', a.q8scope3 === 'complete' ? 'Complete inventory' : 'Not complete / partial');
+  row('Bioenergy', a.bioenergy === 'yes' ? 'Yes — reported separately' : 'No');
+  y += 10;
+
+  // Target
+  sectionHeader('3. Selected Target');
+  const optNames = { 1: 'Option 1 — Near-Term Targets (Standard Choice)', 2: 'Option 2 — Net-Zero Targets (Ambitious Choice)', 3: 'Option 3 — Maintenance Targets (Specific Choice)' };
+  row('Target Path', optNames[opt]);
+  if (opt === 1) {
+    row('Target Year', a.targetYear);
+    row('Minimum Ambition', `${a.ambition.toFixed(1)}% reduction from ${a.baseYear}`);
+  } else if (opt === 2) {
+    row('Near-Term Target Year', a.targetYearNT);
+    row('Near-Term Min. Reduction', `${a.ambition.toFixed(1)}% from ${a.baseYear}`);
+    row('Long-Term Target Year', a.targetYearLT + ' (≥90% reduction, Net-Zero)');
+  } else {
+    row('Target Year', a.targetYear);
+    row('Commitment', `Maintain zero Scope ${a.s1 === 0 ? '1' : '2'} emissions`);
+  }
+  row('Submission Fee', a.feeDiscount ? '~$187.50 (85% discount — developing country <$10M revenue)' : '~$1,250 standard fee');
+  y += 10;
+
+  // Target Language
+  sectionHeader('4. Official Target Language');
+  y += 5;
+  doc.setFillColor(250, 246, 255);
+  const langLines = doc.splitTextToSize(getTargetLanguagePlain(), W - margin * 2 - 20);
+  doc.rect(margin - 4, y - 12, W - margin * 2 + 8, langLines.length * 13 + 16, 'F');
+  doc.setDrawColor(200, 241, 53);
+  doc.setLineWidth(3);
+  doc.line(margin - 4, y - 12, margin - 4, y - 12 + langLines.length * 13 + 16);
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'italic');
+  doc.setTextColor(40, 20, 60);
+  langLines.forEach(l => { doc.text(l, margin + 8, y); y += 13; });
+  y += 20;
+  doc.setTextColor(14, 11, 20);
+
+  // Roadmap
+  sectionHeader('5. Submission Roadmap');
+  const steps = [
+    ['Register', 'Create account on SBTi Validation Portal.'],
+    ['Upload', 'Prepare proof of revenue/employees (e.g., annual report) to prove SME status.'],
+    ['Submit', 'Copy data from this assessment into the "SME Science-Based Target Setting Form" on the portal.'],
+    ['Pay', `Await invoice (${a.feeDiscount ? '~$187.50 with 85% discount' : 'approx. $1,250'}).`],
+    ['Review', 'SBTi Due Diligence takes approximately 60 days.'],
+    ['Report', 'Once approved, publish GHG inventory and progress annually.'],
+  ];
+  steps.forEach(([k, v], i) => row(`Step ${i + 1}: ${k}`, v));
+
+  // Footer
+  const pageCount = doc.internal.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    doc.setFontSize(8);
+    doc.setTextColor(160, 140, 190);
+    doc.text(`SBTi SME Assessment · ${state.companyName} · Page ${i} of ${pageCount}`, margin, doc.internal.pageSize.getHeight() - 25);
+    doc.text('Generated via SBTi SME Readiness Tool · linkedin.com/in/zyad-hatquai/', W - margin, doc.internal.pageSize.getHeight() - 25, { align: 'right' });
+  }
+
+  try {
+    await supabaseClient.from('leads').insert({
+      name: state.userName,
+      email: state.userEmail,
+      company_name: state.companyName
+    });
+  } catch (e) { /* silent — PDF downloads regardless of insert outcome */ }
+
+  doc.save(`SBTi_SME_Assessment_${state.companyName.replace(/\s+/g, '_')}.pdf`);
+}
+
+// ─── STOP SCREEN ─────────────────────────────────────────────────────────────
+
+function showStop(reason) {
+  state.step = 'stop';
+  render(`
+    <div class="stop-card">
+      <div class="stop-icon">✕</div>
+      <div class="stop-title">Not a fit for the SME Route</div>
+      <div class="stop-reason"><strong>Reason:</strong> ${reason}</div>
+      <p style="font-size:14px;color:var(--text-muted);margin-bottom:24px">
+        If you need help navigating the standard or sector-specific route,
+        <a href="https://www.linkedin.com/in/zyad-hatquai/" target="_blank" class="help-link">reach out here</a>.
+      </p>
+      <button class="btn btn-lime" onclick="startOver()">↺ Start Over</button>
+    </div>
+  `);
+}
+
+// ─── START OVER ───────────────────────────────────────────────────────────────
+
+function startOver() {
+  state.phase = 0;
+  state.step = 'welcome';
+  state.answers = {};
+  state.selectedOption = null;
+  state.companyName = '';
+  state.userName = '';
+  state.userEmail = '';
+  window._q4checked = new Set();
+  window._selectedOpt = null;
+  showWelcome();
+}
+
+// ─── INIT ────────────────────────────────────────────────────────────────────
+showWelcome();
+</script>
+</body>
+</html>

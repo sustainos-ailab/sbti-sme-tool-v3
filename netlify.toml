@@ -1,0 +1,12 @@
+[build]
+  publish = "."
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+# Expose the function at /send-report (the path the frontend POSTs to)
+[[redirects]]
+  from = "/send-report"
+  to = "/.netlify/functions/send-report"
+  status = 200

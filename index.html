@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SBTi SME Readiness Assessment</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
@@ -733,7 +732,9 @@ const state = {
   selectedOption: null,
   companyName: '',
   userName: '',
-  userEmail: ''
+  userEmail: '',
+  assessment_answers: null,
+  assessment_results: null
 };
 
 // ─── UTILS ───────────────────────────────────────────────────────────────────
@@ -792,24 +793,6 @@ function showWelcome() {
         <span class="feature-pill">✓ Target Calculator</span>
         <span class="feature-pill">✓ PDF Export</span>
       </div>
-      <div class="input-group">
-        <label class="input-label">Your name</label>
-        <input id="userName" class="input-field" placeholder="e.g. Ana Müller">
-      </div>
-      <div class="input-group">
-        <label class="input-label">Your email address</label>
-        <input id="userEmail" class="input-field" placeholder="e.g. ana@acmetextiles.com">
-      </div>
-      <div class="input-group">
-        <label class="input-label">Your company name (optional, used for PDF)</label>
-        <input id="companyName" class="input-field" placeholder="e.g. Acme Textiles GmbH">
-      </div>
-      <div class="checkbox-item" id="consentCheck" onclick="toggleConsent()" style="margin-bottom:14px">
-        <div class="checkbox-custom"></div>
-        <span class="checkbox-label">I agree that my name and email will be stored securely and used only to send me follow-up resources and to subscribe me to the SustainOS newsletter.</span>
-      </div>
-      <div class="info-note">Your name and email will be stored securely and used only to send you follow-up resources and to subscribe you to the SustainOS newsletter. You can request deletion of your data at any time by emailing info@sustainos.io.</div>
-      <div id="welcomeErr" class="error-msg"></div>
       <div class="btn-row">
         <button class="btn btn-lime" onclick="startAssessment()">Start Assessment →</button>
       </div>
@@ -822,18 +805,6 @@ function toggleConsent() {
 }
 
 function startAssessment() {
-  const name = document.getElementById('userName').value.trim();
-  const email = document.getElementById('userEmail').value.trim();
-  const company = document.getElementById('companyName').value.trim();
-  const consent = document.getElementById('consentCheck').classList.contains('checked');
-  if (!name || !email || !company || !consent) {
-    showError('welcomeErr', 'Please enter your name, email address, and company name, and accept the data terms to continue.');
-    return;
-  }
-  hideError('welcomeErr');
-  state.userName = name;
-  state.userEmail = email;
-  state.companyName = company;
   state.phase = 1;
   showQ1();
 }
@@ -1514,164 +1485,131 @@ function showFinalReport() {
         <div class="target-language-box">${targetLang}</div>
       </div>
 
-      <div class="btn-row">
-        <button class="btn btn-lime" onclick="generatePDF()">⬇ Generate PDF</button>
-        <button class="btn btn-outline" onclick="startOver()">Start Over</button>
+      <div class="report-section">
+        <div class="report-title">Get your full report by email</div>
+        <div class="input-group">
+          <label class="input-label">Your name</label>
+          <input id="contactName" class="input-field" placeholder="e.g. Ana Müller">
+        </div>
+        <div class="input-group">
+          <label class="input-label">Your email address</label>
+          <input id="contactEmail" class="input-field" placeholder="e.g. ana@acmetextiles.com">
+        </div>
+        <div class="input-group">
+          <label class="input-label">Your company name</label>
+          <input id="contactCompany" class="input-field" placeholder="e.g. Acme Textiles GmbH">
+        </div>
+        <div class="checkbox-item" id="consentCheck" onclick="toggleConsent()" style="margin-bottom:14px">
+          <div class="checkbox-custom"></div>
+          <span class="checkbox-label">I agree that my name and email will be stored securely and used only to send me my SBTi assessment report and follow-up resources from SustainOS.</span>
+        </div>
+        <div class="info-note">Your name and email will be stored securely and used only to deliver your report and send follow-up resources from SustainOS. You can request deletion of your data at any time by emailing info@sustainos.io.</div>
+        <div id="contactErr" class="error-msg"></div>
+        <div class="btn-row">
+          <button class="btn btn-lime" id="sendReportBtn" onclick="submitContactForm()">Send my report →</button>
+          <button class="btn btn-outline" onclick="startOver()">Start Over</button>
+        </div>
       </div>
     </div>
   `);
 }
 
-// ─── PDF GENERATION ───────────────────────────────────────────────────────────
+// ─── CONTACT FORM & REPORT DELIVERY ───────────────────────────────────────────
 
-async function generatePDF() {
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+async function submitContactForm() {
+  const name = document.getElementById('contactName').value.trim();
+  const email = document.getElementById('contactEmail').value.trim();
+  const company = document.getElementById('contactCompany').value.trim();
+  const consent = document.getElementById('consentCheck').classList.contains('checked');
+
+  if (!name || !email || !company || !consent) {
+    showError('contactErr', 'Please enter your name, email address, and company name, and accept the data terms to continue.');
+    return;
+  }
+  hideError('contactErr');
+
+  state.userName = name;
+  state.userEmail = email;
+  state.companyName = company;
+
+  const btn = document.getElementById('sendReportBtn');
+  if (btn) btn.textContent = 'Sending…';
+
+  // Assemble JSONB payloads from the existing assessment state
   const a = state.answers;
   const opt = state.selectedOption;
-  const W = doc.internal.pageSize.getWidth();
-  const margin = 50;
-  let y = margin;
+  const optNames = { 1: 'Option 1 — Near-Term Targets (Standard)', 2: 'Option 2 — Net-Zero Targets (Ambitious)', 3: 'Option 3 — Maintenance Targets (Specific)' };
+  state.assessment_answers = Object.assign({}, a, { selectedOption: opt });
+  state.assessment_results = {
+    eligibility_outcome: 'eligible',
+    ghg_totals: {
+      scope1: a.s1,
+      scope2_location: a.s2lb,
+      scope2_market: a.s2mb,
+      scope3_status: a.q8scope3
+    },
+    base_year: a.baseYear,
+    target_path_name: optNames[opt],
+    target_language: getTargetLanguagePlain(),
+    fee_discount: !!a.feeDiscount
+  };
 
-  function addPage() {
-    doc.addPage();
-    y = margin;
-  }
-
-  function checkY(needed = 30) {
-    if (y + needed > doc.internal.pageSize.getHeight() - margin) addPage();
-  }
-
-  // Header block
-  doc.setFillColor(123, 47, 190);
-  doc.rect(0, 0, W, 70, 'F');
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(18);
-  doc.setFont('helvetica', 'bold');
-  doc.text('SBTi SME Readiness Assessment', margin, 30);
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'normal');
-  doc.text(`${state.companyName}  ·  Generated ${new Date().toLocaleDateString('en-GB')}`, margin, 50);
-
-  y = 90;
-  doc.setTextColor(14, 11, 20);
-
-  function sectionHeader(title) {
-    checkY(30);
-    doc.setFillColor(245, 240, 255);
-    doc.rect(margin - 8, y - 12, W - margin * 2 + 16, 22, 'F');
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(123, 47, 190);
-    doc.text(title.toUpperCase(), margin, y);
-    doc.setTextColor(14, 11, 20);
-    y += 18;
-  }
-
-  function row(key, val) {
-    checkY(20);
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'bold');
-    doc.text(key + ':', margin, y);
-    doc.setFont('helvetica', 'normal');
-    const lines = doc.splitTextToSize(String(val), W - margin - 200);
-    doc.text(lines, 240, y);
-    y += lines.length * 13 + 4;
-  }
-
-  function para(text, size = 9) {
-    checkY(20);
-    doc.setFontSize(size);
-    doc.setFont('helvetica', 'normal');
-    const lines = doc.splitTextToSize(text, W - margin * 2);
-    lines.forEach(l => { checkY(14); doc.text(l, margin, y); y += 13; });
-    y += 5;
-  }
-
-  // Eligibility
-  sectionHeader('1. Eligibility Proof');
-  row('Sector', 'Not Oil & Gas or Financial Institution ✓');
-  row('Subsidiary', a.q2_subsidiary === 'yes' ? 'Yes — SME/PE parent ✓' : 'Independent company ✓');
-  row('Emission Threshold', `Below 10,000 tCO2e ✓ (S1+S2LB = ${(a.s1 + a.s2lb).toLocaleString()} tCO2e)`);
-  row('SME Criteria Met', `${a.q4.length} of 4 criteria satisfied`);
-  y += 10;
-
-  // Inventory
-  sectionHeader('2. GHG Inventory Sheet');
-  row('Base Year', a.baseYear);
-  row('Scope 1 (Direct)', a.s1.toLocaleString() + ' tCO2e');
-  row('Scope 2 Location-Based', a.s2lb.toLocaleString() + ' tCO2e');
-  row('Scope 2 Market-Based', a.s2mb !== null ? a.s2mb.toLocaleString() + ' tCO2e' : 'Not provided');
-  row('Exclusions', a.exclusionPct > 0 ? a.exclusionPct + '%' : 'None');
-  row('Scope 3 Status', a.q8scope3 === 'complete' ? 'Complete inventory' : 'Not complete / partial');
-  row('Bioenergy', a.bioenergy === 'yes' ? 'Yes — reported separately' : 'No');
-  y += 10;
-
-  // Target
-  sectionHeader('3. Selected Target');
-  const optNames = { 1: 'Option 1 — Near-Term Targets (Standard Choice)', 2: 'Option 2 — Net-Zero Targets (Ambitious Choice)', 3: 'Option 3 — Maintenance Targets (Specific Choice)' };
-  row('Target Path', optNames[opt]);
-  if (opt === 1) {
-    row('Target Year', a.targetYear);
-    row('Minimum Ambition', `${a.ambition.toFixed(1)}% reduction from ${a.baseYear}`);
-  } else if (opt === 2) {
-    row('Near-Term Target Year', a.targetYearNT);
-    row('Near-Term Min. Reduction', `${a.ambition.toFixed(1)}% from ${a.baseYear}`);
-    row('Long-Term Target Year', a.targetYearLT + ' (≥90% reduction, Net-Zero)');
-  } else {
-    row('Target Year', a.targetYear);
-    row('Commitment', `Maintain zero Scope ${a.s1 === 0 ? '1' : '2'} emissions`);
-  }
-  row('Submission Fee', a.feeDiscount ? '~$187.50 (85% discount — developing country <$10M revenue)' : '~$1,250 standard fee');
-  y += 10;
-
-  // Target Language
-  sectionHeader('4. Official Target Language');
-  y += 5;
-  doc.setFillColor(250, 246, 255);
-  const langLines = doc.splitTextToSize(getTargetLanguagePlain(), W - margin * 2 - 20);
-  doc.rect(margin - 4, y - 12, W - margin * 2 + 8, langLines.length * 13 + 16, 'F');
-  doc.setDrawColor(200, 241, 53);
-  doc.setLineWidth(3);
-  doc.line(margin - 4, y - 12, margin - 4, y - 12 + langLines.length * 13 + 16);
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'italic');
-  doc.setTextColor(40, 20, 60);
-  langLines.forEach(l => { doc.text(l, margin + 8, y); y += 13; });
-  y += 20;
-  doc.setTextColor(14, 11, 20);
-
-  // Roadmap
-  sectionHeader('5. Submission Roadmap');
-  const steps = [
-    ['Register', 'Create account on SBTi Validation Portal.'],
-    ['Upload', 'Prepare proof of revenue/employees (e.g., annual report) to prove SME status.'],
-    ['Submit', 'Copy data from this assessment into the "SME Science-Based Target Setting Form" on the portal.'],
-    ['Pay', `Await invoice (${a.feeDiscount ? '~$187.50 with 85% discount' : 'approx. $1,250'}).`],
-    ['Review', 'SBTi Due Diligence takes approximately 60 days.'],
-    ['Report', 'Once approved, publish GHG inventory and progress annually.'],
-  ];
-  steps.forEach(([k, v], i) => row(`Step ${i + 1}: ${k}`, v));
-
-  // Footer
-  const pageCount = doc.internal.getNumberOfPages();
-  for (let i = 1; i <= pageCount; i++) {
-    doc.setPage(i);
-    doc.setFontSize(8);
-    doc.setTextColor(160, 140, 190);
-    doc.text(`SBTi SME Assessment · ${state.companyName} · Page ${i} of ${pageCount}`, margin, doc.internal.pageSize.getHeight() - 25);
-    doc.text('Generated via SBTi SME Readiness Tool · linkedin.com/in/zyad-hatquai/', W - margin, doc.internal.pageSize.getHeight() - 25, { align: 'right' });
-  }
-
+  // Insert the full submission as anon — failure is silent, execution continues regardless
   try {
-    await supabaseClient.from('leads').insert({
+    await supabaseClient.from('submissions').insert({
       name: state.userName,
       email: state.userEmail,
-      company_name: state.companyName
+      company_name: state.companyName,
+      assessment_answers: state.assessment_answers,
+      assessment_results: state.assessment_results,
+      status: 'pending_verification'
     });
-  } catch (e) { /* silent — PDF downloads regardless of insert outcome */ }
+  } catch (e) { /* silent — continue to the magic link step regardless */ }
 
-  doc.save(`SBTi_SME_Assessment_${state.companyName.replace(/\s+/g, '_')}.pdf`);
+  // Send the magic link
+  const { error } = await supabaseClient.auth.signInWithOtp({ email: state.userEmail });
+  if (error) {
+    showError('contactErr', "We couldn't send your link. Please check your email address and try again.");
+    if (btn) btn.textContent = 'Send my report →';
+    return;
+  }
+  showCheckInbox();
+}
+
+function showCheckInbox() {
+  state.step = 'check_inbox';
+  render(`
+    <div class="card">
+      <div class="welcome-title">Check your<br><span>inbox</span></div>
+      <div class="welcome-subtitle">We've sent a link to ${state.userEmail}. Click it to receive your report.</div>
+      <div class="info-note">The link expires in 60 minutes. Check your spam folder if you don't see it.</div>
+      <a class="help-link" onclick="startOver()" style="cursor:pointer">Start Over</a>
+    </div>
+  `);
+}
+
+function showReportOnItsWay() {
+  state.step = 'report_on_its_way';
+  render(`
+    <div class="card">
+      <div class="welcome-title">Your report is<br><span>on its way</span></div>
+      <div class="welcome-subtitle">We're generating your personalised report now. It will arrive at ${state.userEmail} within a few minutes.</div>
+      <a class="help-link" onclick="startOver()" style="cursor:pointer">Start Over</a>
+    </div>
+  `);
+  triggerReport();
+}
+
+async function triggerReport() {
+  try {
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    if (!session) return;
+    await fetch('/send-report', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ access_token: session.access_token })
+    });
+  } catch (e) { /* silent per spec — no error surfaced to the user */ }
 }
 
 // ─── STOP SCREEN ─────────────────────────────────────────────────────────────
@@ -1694,7 +1632,7 @@ function showStop(reason) {
 
 // ─── START OVER ───────────────────────────────────────────────────────────────
 
-function startOver() {
+async function startOver() {
   state.phase = 0;
   state.step = 'welcome';
   state.answers = {};
@@ -1702,13 +1640,28 @@ function startOver() {
   state.companyName = '';
   state.userName = '';
   state.userEmail = '';
+  state.assessment_answers = null;
+  state.assessment_results = null;
   window._q4checked = new Set();
   window._selectedOpt = null;
+  try { await supabaseClient.auth.signOut(); } catch (e) { /* ignore */ }
   showWelcome();
 }
 
 // ─── INIT ────────────────────────────────────────────────────────────────────
-showWelcome();
+// On every page load, check for an active Supabase session. The JS SDK processes
+// the magic-link token in the URL hash automatically when getSession() is called.
+(async function init() {
+  try {
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    if (session && session.user && session.user.email) {
+      state.userEmail = session.user.email;
+      showReportOnItsWay();
+      return;
+    }
+  } catch (e) { /* fall through to welcome */ }
+  showWelcome();
+})();
 </script>
 </body>
 </html>

@@ -1,6 +1,13 @@
 [build]
   publish = "."
 
+[build.environment]
+  # SUPABASE_URL and SUPABASE_ANON_KEY are intentionally embedded client-side in
+  # index.html (safe with RLS). They are not secrets, so exclude them from
+  # Netlify's secrets scanner. ANTHROPIC_API_KEY and RESEND_API_KEY are NOT listed
+  # here — they remain scanned and must never appear in any committed file.
+  SECRETS_SCAN_OMIT_KEYS = "SUPABASE_URL,SUPABASE_ANON_KEY"
+
 [functions]
   directory = "netlify/functions"
   node_bundler = "esbuild"

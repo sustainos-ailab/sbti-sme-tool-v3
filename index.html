@@ -1569,8 +1569,14 @@ async function submitContactForm() {
     });
   } catch (e) { /* silent — continue to the magic link step regardless */ }
 
-  // Send the magic link
-  const { error } = await supabaseClient.auth.signInWithOtp({ email: state.userEmail });
+  // Send the magic link. emailRedirectTo pins the return URL to the live origin the
+  // user is actually on, instead of relying on the dashboard Site URL (which can drift
+  // if the Netlify site is renamed). This origin must also be in Supabase Auth →
+  // URL Configuration → Redirect URLs, or Supabase ignores it and falls back to Site URL.
+  const { error } = await supabaseClient.auth.signInWithOtp({
+    email: state.userEmail,
+    options: { emailRedirectTo: window.location.origin }
+  });
   if (error) {
     showError('contactErr', "We couldn't send your link. Please check your email address and try again.");
     if (btn) btn.textContent = 'Send my report →';

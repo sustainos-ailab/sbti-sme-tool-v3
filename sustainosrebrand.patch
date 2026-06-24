@@ -1,0 +1,376 @@
+From 88491608e91f664d56cc6110c62c38e2073a9189 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Wed, 24 Jun 2026 13:33:45 +0000
+Subject: [PATCH] Rebrand wizard UI to SustainOS visual identity
+
+Repaint the assessment wizard from the dark provisional theme to the
+SustainOS brand: warm cream canvas (#F5F4EF), white cards, indigo
+(#6E6CFF) primary accent, lime (#C8F135) reserved for CTAs/accents, and
+Poppins typography throughout.
+
+Purely visual: only the <style> block and the font <link> change. All
+markup, CSS class names, and JS logic are untouched, so behaviour is
+identical. CSS variable names are kept (e.g. --purple now holds the
+brand indigo) so existing var() references in both CSS and JS keep
+working. Lime is remapped to indigo everywhere it was used as text
+(unreadable on a light background) and kept only as button/accent fills.
+
+Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01UiChTjRz9VhAHHURuFiz4m
+---
+ index.html | 125 +++++++++++++++++++++++++++--------------------------
+ 1 file changed, 64 insertions(+), 61 deletions(-)
+
+diff --git a/index.html b/index.html
+index 1b0a397..1652a80 100644
+--- a/index.html
++++ b/index.html
+@@ -5,31 +5,34 @@
+ <meta name="viewport" content="width=device-width, initial-scale=1.0">
+ <title>SBTi SME Readiness Assessment</title>
+ <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
++<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+ <style>
+   :root {
+-    --purple: #7B2FBE;
+-    --purple-dark: #5A1F8A;
+-    --purple-light: #9B4FDE;
+-    --lime: #C8F135;
+-    --lime-dark: #A8D020;
+-    --bg: #0E0B14;
+-    --bg2: #160E23;
+-    --bg3: #1E1530;
+-    --surface: #261D3A;
+-    --surface2: #2E2445;
+-    --border: rgba(123,47,190,0.3);
+-    --text: #F0ECF8;
+-    --text-muted: #9D8EC0;
+-    --text-dim: #6B5D8A;
+-    --red: #FF4D6D;
+-    --green: #4ECCA3;
++    /* SustainOS brand — light theme.
++       Variable names are kept from the original (e.g. --purple) so existing
++       CSS and JS references keep working; --purple now holds the brand indigo. */
++    --purple: #6E6CFF;        /* brand indigo — primary accent (headings, links, primary button) */
++    --purple-dark: #4F4DD6;   /* indigo, darker — hover/active */
++    --purple-light: #8A88FF;  /* indigo, lighter */
++    --lime: #C8F135;          /* brand lime — CTA + accent fills (never used as text on light) */
++    --lime-dark: #AFD81F;     /* lime hover */
++    --bg: #F5F4EF;            /* warm cream page canvas */
++    --bg2: #FFFFFF;           /* card surface (white) */
++    --bg3: #FBFAF6;           /* subtle alt surface */
++    --surface: #F7F6F1;       /* inputs, choices, pills — subtle off-white */
++    --surface2: #EEEDE7;      /* hover surface */
++    --border: #E5E5E5;        /* light gray borders */
++    --text: #2B2B2B;          /* charcoal — body + headings */
++    --text-muted: #595959;    /* secondary text */
++    --text-dim: #8A8A8A;      /* muted / captions */
++    --red: #E65E62;           /* brand coral */
++    --green: #2FA46E;         /* success green, readable on light */
+   }
+ 
+   * { margin: 0; padding: 0; box-sizing: border-box; }
+ 
+   body {
+-    font-family: 'DM Sans', sans-serif;
++    font-family: 'Poppins', sans-serif;
+     background: var(--bg);
+     color: var(--text);
+     min-height: 100vh;
+@@ -42,8 +45,8 @@
+     position: fixed;
+     inset: 0;
+     background:
+-      radial-gradient(ellipse 60% 40% at 10% 20%, rgba(123,47,190,0.15) 0%, transparent 60%),
+-      radial-gradient(ellipse 40% 50% at 90% 80%, rgba(200,241,53,0.06) 0%, transparent 60%);
++      radial-gradient(ellipse 60% 40% at 10% 20%, rgba(110,108,255,0.08) 0%, transparent 60%),
++      radial-gradient(ellipse 40% 50% at 90% 80%, rgba(200,241,53,0.10) 0%, transparent 60%);
+     pointer-events: none;
+     z-index: 0;
+   }
+@@ -57,13 +60,13 @@
+     display: flex;
+     align-items: center;
+     justify-content: space-between;
+-    background: rgba(14,11,20,0.85);
++    background: rgba(245,244,239,0.82);
+     backdrop-filter: blur(20px);
+     border-bottom: 1px solid var(--border);
+   }
+ 
+   .logo {
+-    font-family: 'Syne', sans-serif;
++    font-family: 'Poppins', sans-serif;
+     font-weight: 800;
+     font-size: 16px;
+     letter-spacing: 0.05em;
+@@ -87,7 +90,7 @@
+   .logo span { color: var(--text-muted); font-weight: 300; }
+ 
+   .btn-restart {
+-    font-family: 'DM Sans', sans-serif;
++    font-family: 'Poppins', sans-serif;
+     font-size: 12px;
+     font-weight: 500;
+     padding: 7px 16px;
+@@ -134,8 +137,8 @@
+     color: var(--text-dim);
+     transition: color 0.3s;
+   }
+-  .phase-label.active { color: var(--lime); }
+-  .phase-label.done { color: var(--purple-light); }
++  .phase-label.active { color: var(--purple); }
++  .phase-label.done { color: var(--text-muted); }
+ 
+   .progress-bar {
+     height: 3px;
+@@ -178,9 +181,9 @@
+     font-weight: 600;
+     letter-spacing: 0.12em;
+     text-transform: uppercase;
+-    color: var(--lime);
+-    background: rgba(200,241,53,0.08);
+-    border: 1px solid rgba(200,241,53,0.2);
++    color: var(--purple);
++    background: rgba(110,108,255,0.08);
++    border: 1px solid rgba(110,108,255,0.22);
+     padding: 4px 12px;
+     border-radius: 100px;
+     margin-bottom: 20px;
+@@ -196,7 +199,7 @@
+   }
+ 
+   .question-text {
+-    font-family: 'Syne', sans-serif;
++    font-family: 'Poppins', sans-serif;
+     font-weight: 600;
+     font-size: 22px;
+     line-height: 1.35;
+@@ -213,7 +216,7 @@
+ 
+   /* Buttons */
+   .btn {
+-    font-family: 'DM Sans', sans-serif;
++    font-family: 'Poppins', sans-serif;
+     font-weight: 500;
+     font-size: 15px;
+     padding: 13px 28px;
+@@ -231,14 +234,14 @@
+     background: var(--purple);
+     color: #fff;
+   }
+-  .btn-primary:hover { background: var(--purple-light); transform: translateY(-1px); box-shadow: 0 8px 24px rgba(123,47,190,0.35); }
++  .btn-primary:hover { background: var(--purple-dark); transform: translateY(-1px); box-shadow: 0 8px 24px rgba(110,108,255,0.30); }
+ 
+   .btn-lime {
+     background: var(--lime);
+-    color: #0E0B14;
++    color: #2B2B2B;
+     font-weight: 600;
+   }
+-  .btn-lime:hover { background: var(--lime-dark); transform: translateY(-1px); box-shadow: 0 8px 24px rgba(200,241,53,0.3); }
++  .btn-lime:hover { background: var(--lime-dark); transform: translateY(-1px); box-shadow: 0 8px 24px rgba(175,216,31,0.45); }
+ 
+   .btn-outline {
+     background: transparent;
+@@ -269,7 +272,7 @@
+   }
+ 
+   .choice-btn {
+-    font-family: 'DM Sans', sans-serif;
++    font-family: 'Poppins', sans-serif;
+     font-size: 15px;
+     font-weight: 400;
+     text-align: left;
+@@ -309,7 +312,7 @@
+     transition: all 0.2s;
+   }
+   .checkbox-item:hover { border-color: var(--purple-light); background: var(--surface2); }
+-  .checkbox-item.checked { border-color: var(--purple); background: rgba(123,47,190,0.08); }
++  .checkbox-item.checked { border-color: var(--purple); background: rgba(110,108,255,0.08); }
+ 
+   .checkbox-item input[type="checkbox"] { display: none; }
+ 
+@@ -349,7 +352,7 @@
+     background: var(--surface);
+     border: 1px solid var(--border);
+     color: var(--text);
+-    font-family: 'DM Sans', sans-serif;
++    font-family: 'Poppins', sans-serif;
+     font-size: 16px;
+     padding: 13px 18px;
+     border-radius: 10px;
+@@ -357,7 +360,7 @@
+     transition: all 0.2s;
+     margin-bottom: 14px;
+   }
+-  .input-field:focus { border-color: var(--purple-light); box-shadow: 0 0 0 3px rgba(123,47,190,0.12); }
++  .input-field:focus { border-color: var(--purple-light); box-shadow: 0 0 0 3px rgba(110,108,255,0.15); }
+ 
+   .input-label {
+     font-size: 13px;
+@@ -385,8 +388,8 @@
+ 
+   /* Info note */
+   .info-note {
+-    background: rgba(123,47,190,0.08);
+-    border: 1px solid var(--border);
++    background: rgba(110,108,255,0.07);
++    border: 1px solid rgba(110,108,255,0.18);
+     padding: 12px 16px;
+     border-radius: 8px;
+     font-size: 13px;
+@@ -416,7 +419,7 @@
+   }
+ 
+   .stop-title {
+-    font-family: 'Syne', sans-serif;
++    font-family: 'Poppins', sans-serif;
+     font-size: 24px;
+     font-weight: 700;
+     color: var(--red);
+@@ -432,8 +435,8 @@
+ 
+   /* Calibration screen */
+   .calibration-card {
+-    background: rgba(200,241,53,0.04);
+-    border: 1px solid rgba(200,241,53,0.2);
++    background: rgba(200,241,53,0.10);
++    border: 1px solid rgba(175,216,31,0.30);
+     border-radius: 16px;
+     padding: 40px;
+     animation: slideUp 0.35s ease;
+@@ -441,7 +444,7 @@
+ 
+   .calibration-icon {
+     width: 56px; height: 56px;
+-    background: rgba(200,241,53,0.1);
++    background: rgba(200,241,53,0.20);
+     border-radius: 50%;
+     display: flex;
+     align-items: center;
+@@ -451,10 +454,10 @@
+   }
+ 
+   .calibration-title {
+-    font-family: 'Syne', sans-serif;
++    font-family: 'Poppins', sans-serif;
+     font-size: 24px;
+     font-weight: 700;
+-    color: var(--lime);
++    color: var(--purple);
+     margin-bottom: 16px;
+   }
+ 
+@@ -473,7 +476,7 @@
+   }
+   .summary-list li::before {
+     content: '›';
+-    color: var(--lime);
++    color: var(--purple);
+     font-weight: 700;
+     flex-shrink: 0;
+   }
+@@ -497,7 +500,7 @@
+     overflow: hidden;
+   }
+   .option-card:not(.disabled):hover { border-color: var(--purple); background: var(--surface2); }
+-  .option-card.selected { border-color: var(--lime); background: rgba(200,241,53,0.05); }
++  .option-card.selected { border-color: var(--lime); background: rgba(200,241,53,0.12); }
+   .option-card.disabled { opacity: 0.4; cursor: not-allowed; }
+ 
+   .option-card-header {
+@@ -508,7 +511,7 @@
+   }
+ 
+   .option-card-title {
+-    font-family: 'Syne', sans-serif;
++    font-family: 'Poppins', sans-serif;
+     font-weight: 700;
+     font-size: 16px;
+     color: var(--text);
+@@ -525,8 +528,8 @@
+     color: var(--text-dim);
+   }
+   .option-card.selected .option-badge {
+-    background: rgba(200,241,53,0.15);
+-    color: var(--lime);
++    background: var(--lime);
++    color: #2B2B2B;
+   }
+ 
+   .option-card-desc {
+@@ -569,7 +572,7 @@
+     font-weight: 700;
+     flex-shrink: 0;
+     color: #fff;
+-    font-family: 'Syne', sans-serif;
++    font-family: 'Poppins', sans-serif;
+   }
+ 
+   .step-content strong {
+@@ -592,7 +595,7 @@
+   }
+ 
+   .report-title {
+-    font-family: 'Syne', sans-serif;
++    font-family: 'Poppins', sans-serif;
+     font-size: 13px;
+     font-weight: 700;
+     letter-spacing: 0.1em;
+@@ -608,7 +611,7 @@
+     gap: 12px;
+     padding: 8px 0;
+     font-size: 13px;
+-    border-bottom: 1px solid rgba(123,47,190,0.1);
++    border-bottom: 1px solid rgba(0,0,0,0.06);
+   }
+ 
+   .report-key {
+@@ -637,9 +640,9 @@
+     display: inline-flex;
+     align-items: center;
+     gap: 6px;
+-    background: rgba(200,241,53,0.1);
+-    border: 1px solid rgba(200,241,53,0.3);
+-    color: var(--lime);
++    background: rgba(200,241,53,0.28);
++    border: 1px solid rgba(175,216,31,0.55);
++    color: #4A5A0A;
+     font-size: 13px;
+     font-weight: 600;
+     padding: 6px 14px;
+@@ -649,24 +652,24 @@
+ 
+   /* Help link */
+   .help-link {
+-    color: var(--purple-light);
++    color: var(--purple);
+     text-decoration: none;
+     font-weight: 500;
+-    border-bottom: 1px solid rgba(155,79,222,0.4);
++    border-bottom: 1px solid rgba(110,108,255,0.4);
+     transition: color 0.2s;
+   }
+-  .help-link:hover { color: var(--lime); border-color: var(--lime); }
++  .help-link:hover { color: var(--purple-dark); border-color: var(--purple-dark); }
+ 
+   /* Welcome screen */
+   .welcome-title {
+-    font-family: 'Syne', sans-serif;
++    font-family: 'Poppins', sans-serif;
+     font-size: 36px;
+     font-weight: 800;
+     line-height: 1.2;
+     margin-bottom: 16px;
+   }
+ 
+-  .welcome-title span { color: var(--lime); }
++  .welcome-title span { color: var(--purple); }
+ 
+   .welcome-subtitle {
+     font-size: 16px;
+-- 
+2.43.0
+
